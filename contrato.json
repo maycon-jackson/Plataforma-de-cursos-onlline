@@ -1,136 +1,594 @@
 {
   "versao": 1,
-  "tema": "Biblioteca",
-  "descricao": "Usuários cadastram livros. Qualquer pessoa vê os livros; só quem cadastrou altera ou remove.",
+  "tema": "Plataforma de Cursos Online (LMS)",
+  "descricao": "Plataforma em que usuários podem cadastrar cursos, consultar o catálogo e realizar matrículas. Cada usuário pode gerenciar os próprios cursos e matrículas.",
+  "entidades": {
+    "Usuario": {
+      "campos": {
+        "id": "numero",
+        "nome": "texto",
+        "email": "texto",
+        "senha": "texto"
+      },
+      "regras": [
+        "Todos os campos são obrigatórios no cadastro.",
+        "O e-mail deve ser único.",
+        "A senha deve ser armazenada como hash.",
+        "A senha nunca deve aparecer nas respostas."
+      ]
+    },
+    "Curso": {
+      "campos": {
+        "id": "numero",
+        "titulo": "texto",
+        "descricao": "texto",
+        "carga_horaria": "numero",
+        "categoria": "texto",
+        "usuarioId": "numero"
+      },
+      "regras": [
+        "Título, descrição, carga horária e categoria são obrigatórios.",
+        "A carga horária deve ser maior que zero.",
+        "O usuarioId é definido pelo token do usuário autenticado.",
+        "Somente o dono pode editar ou remover o curso.",
+        "O catálogo é público para leitura."
+      ]
+    },
+    "Matricula": {
+      "campos": {
+        "id": "numero",
+        "usuarioId": "numero",
+        "cursoId": "numero",
+        "dataMatricula": "data",
+        "progresso": "numero decimal",
+        "status": "texto"
+      },
+      "regras": [
+        "O usuarioId é obtido do token.",
+        "O curso deve existir.",
+        "O usuário não pode se matricular duas vezes no mesmo curso.",
+        "O progresso deve estar entre 0 e 100.",
+        "Ao atingir 100 de progresso, o status passa para Concluído.",
+        "Somente o dono pode consultar, alterar ou cancelar sua matrícula."
+      ]
+    }
+  },
   "rotas": [
     {
-      "metodo": "GET",
-      "caminho": "/livros",
+      "metodo": "POST",
+      "caminho": "/auth/cadastro",
       "acesso": "aberto",
-      "descricao": "Lista todos os livros.",
+      "descricao": "Cadastra um novo usuário.",
       "exemplos": [
         {
-          "descricao": "Lista os livros",
+          "descricao": "Cadastro válido",
+          "requisicao": {
+            "nome": "Ana Silva",
+            "email": "ana@email.com",
+            "senha": "senha123"
+          },
+          "resposta": {
+            "id": 1,
+            "nome": "Ana Silva",
+            "email": "ana@email.com"
+          },
+          "status": 201
+        },
+        {
+          "descricao": "Campo obrigatório ausente",
+          "requisicao": {
+            "nome": "Ana Silva",
+            "email": "ana@email.com"
+          },
+          "resposta": {
+            "erro": "Campo obrigatório ausente: senha"
+          },
+          "status": 400
+        },
+        {
+          "descricao": "E-mail já cadastrado",
+          "requisicao": {
+            "nome": "Ana Silva",
+            "email": "ana@email.com",
+            "senha": "senha123"
+          },
+          "resposta": {
+            "erro": "E-mail já cadastrado"
+          },
+          "status": 400
+        }
+      ]
+    },
+    {
+      "metodo": "POST",
+      "caminho": "/auth/login",
+      "acesso": "aberto",
+      "descricao": "Autentica o usuário e retorna um token.",
+      "exemplos": [
+        {
+          "descricao": "Login válido",
+          "requisicao": {
+            "email": "ana@email.com",
+            "senha": "senha123"
+          },
+          "resposta": {
+            "token": "<token_de_acesso>",
+            "usuario": {
+              "id": 1,
+              "nome": "Ana Silva",
+              "email": "ana@email.com"
+            }
+          },
+          "status": 200
+        },
+        {
+          "descricao": "Credenciais incorretas",
+          "requisicao": {
+            "email": "ana@email.com",
+            "senha": "senhaerrada"
+          },
+          "resposta": {
+            "erro": "E-mail ou senha incorretos"
+          },
+          "status": 401
+        }
+      ]
+    },
+    {
+      "metodo": "GET",
+      "caminho": "/auth/perfil",
+      "acesso": "logado",
+      "descricao": "Retorna os dados do usuário autenticado.",
+      "exemplos": [
+        {
+          "descricao": "Token válido",
+          "requisicao": null,
+          "resposta": {
+            "id": 1,
+            "nome": "Ana Silva",
+            "email": "ana@email.com"
+          },
+          "status": 200
+        },
+        {
+          "descricao": "Token ausente ou inválido",
+          "requisicao": null,
+          "resposta": {
+            "erro": "Token ausente ou inválido"
+          },
+          "status": 401
+        }
+      ]
+    },
+    {
+      "metodo": "GET",
+      "caminho": "/cursos",
+      "acesso": "aberto",
+      "descricao": "Lista os cursos cadastrados no catálogo.",
+      "exemplos": [
+        {
+          "descricao": "Existem cursos cadastrados",
           "requisicao": null,
           "resposta": [
-            { "id": 1, "titulo": "Vidas Secas", "autor": "Graciliano Ramos", "ano": 1938, "usuarioId": 3 }
+            {
+              "id": 1,
+              "titulo": "JavaScript Básico",
+              "descricao": "Introdução à programação.",
+              "carga_horaria": 20,
+              "categoria": "Programação",
+              "usuarioId": 2
+            }
           ],
+          "status": 200
+        },
+        {
+          "descricao": "Catálogo vazio",
+          "requisicao": null,
+          "resposta": [],
           "status": 200
         }
       ]
     },
     {
       "metodo": "GET",
-      "caminho": "/livros/:id",
+      "caminho": "/cursos/:id",
       "acesso": "aberto",
-      "descricao": "Detalha um livro.",
+      "descricao": "Detalha um curso específico.",
       "exemplos": [
         {
-          "descricao": "Livro existe",
+          "descricao": "Curso encontrado",
           "requisicao": null,
-          "resposta": { "id": 1, "titulo": "Vidas Secas", "autor": "Graciliano Ramos", "ano": 1938, "usuarioId": 3 },
+          "resposta": {
+            "id": 1,
+            "titulo": "JavaScript Básico",
+            "descricao": "Introdução à programação.",
+            "carga_horaria": 20,
+            "categoria": "Programação",
+            "usuarioId": 2
+          },
           "status": 200
         },
         {
-          "descricao": "Livro não existe",
+          "descricao": "Curso inexistente",
           "requisicao": null,
-          "resposta": { "erro": "Livro não encontrado" },
+          "resposta": {
+            "erro": "Curso não encontrado"
+          },
           "status": 404
         }
       ]
     },
     {
       "metodo": "POST",
-      "caminho": "/livros",
+      "caminho": "/cursos",
       "acesso": "logado",
-      "descricao": "Cadastra um livro. O dono é quem está logado.",
+      "descricao": "Cadastra um curso. O usuário autenticado torna-se o dono.",
       "exemplos": [
         {
-          "descricao": "Dados válidos",
-          "requisicao": { "titulo": "Vidas Secas", "autor": "Graciliano Ramos", "ano": 1938 },
-          "resposta": { "id": 1, "titulo": "Vidas Secas", "autor": "Graciliano Ramos", "ano": 1938, "usuarioId": 3 },
+          "descricao": "Curso cadastrado",
+          "requisicao": {
+            "titulo": "JavaScript Básico",
+            "descricao": "Introdução à programação.",
+            "carga_horaria": 20,
+            "categoria": "Programação"
+          },
+          "resposta": {
+            "id": 1,
+            "titulo": "JavaScript Básico",
+            "descricao": "Introdução à programação.",
+            "carga_horaria": 20,
+            "categoria": "Programação",
+            "usuarioId": 2
+          },
           "status": 201
         },
         {
-          "descricao": "Falta o autor",
-          "requisicao": { "titulo": "Vidas Secas" },
-          "resposta": { "erro": "Campo obrigatório ausente: autor" },
+          "descricao": "Carga horária inválida",
+          "requisicao": {
+            "titulo": "JavaScript Básico",
+            "descricao": "Introdução à programação.",
+            "carga_horaria": -5,
+            "categoria": "Programação"
+          },
+          "resposta": {
+            "erro": "A carga horária deve ser maior que zero"
+          },
           "status": 400
         },
         {
           "descricao": "Sem token",
-          "requisicao": { "titulo": "Vidas Secas", "autor": "Graciliano Ramos", "ano": 1938 },
-          "resposta": { "erro": "Token ausente ou inválido" },
+          "requisicao": {
+            "titulo": "JavaScript Básico",
+            "descricao": "Introdução à programação.",
+            "carga_horaria": 20,
+            "categoria": "Programação"
+          },
+          "resposta": {
+            "erro": "Token ausente ou inválido"
+          },
           "status": 401
         }
       ]
     },
     {
       "metodo": "PUT",
-      "caminho": "/livros/:id",
+      "caminho": "/cursos/:id",
       "acesso": "dono",
-      "descricao": "Altera um livro. Só o dono pode.",
+      "descricao": "Atualiza os dados de um curso. Somente seu dono pode alterar.",
       "exemplos": [
         {
-          "descricao": "Dono altera o livro",
-          "requisicao": { "titulo": "Vidas Secas", "autor": "Graciliano Ramos", "ano": 1938 },
-          "resposta": { "id": 1, "titulo": "Vidas Secas", "autor": "Graciliano Ramos", "ano": 1938, "usuarioId": 3 },
+          "descricao": "Dono atualiza o curso",
+          "requisicao": {
+            "titulo": "JavaScript Intermediário",
+            "descricao": "Conceitos intermediários de JavaScript.",
+            "carga_horaria": 30,
+            "categoria": "Programação"
+          },
+          "resposta": {
+            "id": 1,
+            "titulo": "JavaScript Intermediário",
+            "descricao": "Conceitos intermediários de JavaScript.",
+            "carga_horaria": 30,
+            "categoria": "Programação",
+            "usuarioId": 2
+          },
           "status": 200
         },
         {
-          "descricao": "Ano no futuro",
-          "requisicao": { "titulo": "Vidas Secas", "autor": "Graciliano Ramos", "ano": 2999 },
-          "resposta": { "erro": "Ano não pode ser no futuro" },
+          "descricao": "Dados inválidos",
+          "requisicao": {
+            "titulo": "",
+            "descricao": "Curso de programação.",
+            "carga_horaria": 20,
+            "categoria": "Programação"
+          },
+          "resposta": {
+            "erro": "O título é obrigatório"
+          },
           "status": 400
         },
         {
           "descricao": "Sem token",
-          "requisicao": { "titulo": "Vidas Secas", "autor": "Graciliano Ramos", "ano": 1938 },
-          "resposta": { "erro": "Token ausente ou inválido" },
+          "requisicao": {
+            "titulo": "JavaScript Intermediário",
+            "descricao": "Conceitos intermediários.",
+            "carga_horaria": 30,
+            "categoria": "Programação"
+          },
+          "resposta": {
+            "erro": "Token ausente ou inválido"
+          },
           "status": 401
         },
         {
-          "descricao": "Logado, mas não é o dono",
-          "requisicao": { "titulo": "Vidas Secas", "autor": "Graciliano Ramos", "ano": 1938 },
-          "resposta": { "erro": "Sem permissão para alterar este livro" },
+          "descricao": "Usuário não é o dono",
+          "requisicao": {
+            "titulo": "JavaScript Intermediário",
+            "descricao": "Conceitos intermediários.",
+            "carga_horaria": 30,
+            "categoria": "Programação"
+          },
+          "resposta": {
+            "erro": "Sem permissão para alterar este curso"
+          },
           "status": 403
         },
         {
-          "descricao": "Livro não existe",
-          "requisicao": { "titulo": "Vidas Secas", "autor": "Graciliano Ramos", "ano": 1938 },
-          "resposta": { "erro": "Livro não encontrado" },
+          "descricao": "Curso inexistente",
+          "requisicao": {
+            "titulo": "JavaScript Intermediário",
+            "descricao": "Conceitos intermediários.",
+            "carga_horaria": 30,
+            "categoria": "Programação"
+          },
+          "resposta": {
+            "erro": "Curso não encontrado"
+          },
           "status": 404
         }
       ]
     },
     {
       "metodo": "DELETE",
-      "caminho": "/livros/:id",
+      "caminho": "/cursos/:id",
       "acesso": "dono",
-      "descricao": "Remove um livro. Só o dono pode.",
+      "descricao": "Remove um curso. Somente seu dono pode removê-lo.",
       "exemplos": [
         {
-          "descricao": "Dono remove o livro",
+          "descricao": "Curso removido",
           "requisicao": null,
           "resposta": null,
           "status": 204
         },
         {
-          "descricao": "Sem token",
+          "descricao": "Usuário não é o dono",
           "requisicao": null,
-          "resposta": { "erro": "Token ausente ou inválido" },
-          "status": 401
-        },
-        {
-          "descricao": "Logado, mas não é o dono",
-          "requisicao": null,
-          "resposta": { "erro": "Sem permissão para remover este livro" },
+          "resposta": {
+            "erro": "Sem permissão para remover este curso"
+          },
           "status": 403
         },
         {
-          "descricao": "Livro não existe",
+          "descricao": "Curso inexistente",
           "requisicao": null,
-          "resposta": { "erro": "Livro não encontrado" },
+          "resposta": {
+            "erro": "Curso não encontrado"
+          },
+          "status": 404
+        }
+      ]
+    },
+    {
+      "metodo": "POST",
+      "caminho": "/matriculas",
+      "acesso": "logado",
+      "descricao": "Matricula o usuário autenticado em um curso.",
+      "exemplos": [
+        {
+          "descricao": "Matrícula realizada",
+          "requisicao": {
+            "cursoId": 1
+          },
+          "resposta": {
+            "id": 1,
+            "usuarioId": 3,
+            "cursoId": 1,
+            "dataMatricula": "2026-10-15",
+            "progresso": 0,
+            "status": "Em andamento"
+          },
+          "status": 201
+        },
+        {
+          "descricao": "Curso inexistente",
+          "requisicao": {
+            "cursoId": 999
+          },
+          "resposta": {
+            "erro": "Curso não encontrado"
+          },
+          "status": 404
+        },
+        {
+          "descricao": "Matrícula duplicada",
+          "requisicao": {
+            "cursoId": 1
+          },
+          "resposta": {
+            "erro": "Usuário já matriculado neste curso"
+          },
+          "status": 400
+        },
+        {
+          "descricao": "Sem token",
+          "requisicao": {
+            "cursoId": 1
+          },
+          "resposta": {
+            "erro": "Token ausente ou inválido"
+          },
+          "status": 401
+        }
+      ]
+    },
+    {
+      "metodo": "GET",
+      "caminho": "/matriculas",
+      "acesso": "logado",
+      "descricao": "Lista somente as matrículas do usuário autenticado.",
+      "exemplos": [
+        {
+          "descricao": "Matrículas encontradas",
+          "requisicao": null,
+          "resposta": [
+            {
+              "id": 1,
+              "usuarioId": 3,
+              "cursoId": 1,
+              "dataMatricula": "2026-10-15",
+              "progresso": 0,
+              "status": "Em andamento"
+            }
+          ],
+          "status": 200
+        },
+        {
+          "descricao": "Nenhuma matrícula",
+          "requisicao": null,
+          "resposta": [],
+          "status": 200
+        },
+        {
+          "descricao": "Sem token",
+          "requisicao": null,
+          "resposta": {
+            "erro": "Token ausente ou inválido"
+          },
+          "status": 401
+        }
+      ]
+    },
+    {
+      "metodo": "GET",
+      "caminho": "/matriculas/:id",
+      "acesso": "dono",
+      "descricao": "Detalha uma matrícula. Somente seu dono pode consultá-la.",
+      "exemplos": [
+        {
+          "descricao": "Matrícula do próprio usuário",
+          "requisicao": null,
+          "resposta": {
+            "id": 1,
+            "usuarioId": 3,
+            "cursoId": 1,
+            "dataMatricula": "2026-10-15",
+            "progresso": 0,
+            "status": "Em andamento"
+          },
+          "status": 200
+        },
+        {
+          "descricao": "Matrícula de outro usuário",
+          "requisicao": null,
+          "resposta": {
+            "erro": "Sem permissão para consultar esta matrícula"
+          },
+          "status": 403
+        },
+        {
+          "descricao": "Matrícula inexistente",
+          "requisicao": null,
+          "resposta": {
+            "erro": "Matrícula não encontrada"
+          },
+          "status": 404
+        }
+      ]
+    },
+    {
+      "metodo": "PATCH",
+      "caminho": "/matriculas/:id/progresso",
+      "acesso": "dono",
+      "descricao": "Atualiza o progresso da matrícula do próprio usuário.",
+      "exemplos": [
+        {
+          "descricao": "Progresso atualizado",
+          "requisicao": {
+            "progresso": 75.5
+          },
+          "resposta": {
+            "id": 1,
+            "usuarioId": 3,
+            "cursoId": 1,
+            "dataMatricula": "2026-10-15",
+            "progresso": 75.5,
+            "status": "Em andamento"
+          },
+          "status": 200
+        },
+        {
+          "descricao": "Progresso fora do intervalo",
+          "requisicao": {
+            "progresso": 120
+          },
+          "resposta": {
+            "erro": "O progresso deve estar entre 0 e 100"
+          },
+          "status": 400
+        },
+        {
+          "descricao": "Curso concluído",
+          "requisicao": {
+            "progresso": 100
+          },
+          "resposta": {
+            "id": 1,
+            "usuarioId": 3,
+            "cursoId": 1,
+            "dataMatricula": "2026-10-15",
+            "progresso": 100,
+            "status": "Concluído"
+          },
+          "status": 200
+        },
+        {
+          "descricao": "Usuário não é o dono",
+          "requisicao": {
+            "progresso": 50
+          },
+          "resposta": {
+            "erro": "Sem permissão para alterar esta matrícula"
+          },
+          "status": 403
+        }
+      ]
+    },
+    {
+      "metodo": "DELETE",
+      "caminho": "/matriculas/:id",
+      "acesso": "dono",
+      "descricao": "Cancela a matrícula do próprio usuário.",
+      "exemplos": [
+        {
+          "descricao": "Matrícula cancelada",
+          "requisicao": null,
+          "resposta": null,
+          "status": 204
+        },
+        {
+          "descricao": "Usuário não é o dono",
+          "requisicao": null,
+          "resposta": {
+            "erro": "Sem permissão para cancelar esta matrícula"
+          },
+          "status": 403
+        },
+        {
+          "descricao": "Matrícula inexistente",
+          "requisicao": null,
+          "resposta": {
+            "erro": "Matrícula não encontrada"
+          },
           "status": 404
         }
       ]
