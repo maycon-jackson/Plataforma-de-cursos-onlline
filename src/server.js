@@ -1,7 +1,7 @@
 import express from 'express';
-import authRoutes from './src/routes/authRoutes.js';
-import cursoRoutes from './src/routes/cursoRoutes.js';
-import matriculaRoutes from './src/routes/matriculaRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+import cursoRoutes from './routes/cursoRoutes.js';
+import matriculaRoutes from './routes/matriculaRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
